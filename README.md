@@ -36,38 +36,60 @@
 
 ## 🚀 실행 방법
 
-### 1. PostgreSQL 실행 (Docker)
+### 사전 준비
+
+- JDK 21
+- Docker Desktop (실행 중이어야 합니다. `docker ps`로 확인)
+
+### 1. 환경 변수 파일 만들기
+
+비밀번호·JWT 비밀키는 저장소에 커밋하지 않습니다. 예시 파일을 복사해 `.env`를 만들고 값을 채웁니다. `.env`는 `.gitignore`에 포함되어 있습니다.
 
 ```bash
-# 처음 한 번만
-docker run --name delivery-db \
-  -e POSTGRES_USER=delivery \
-  -e POSTGRES_PASSWORD=delivery1234 \
-  -e POSTGRES_DB=delivery \
-  -p 5432:5432 -d postgres:18
-
-# 다음부터는
-docker start delivery-db
+cp .env.example .env
 ```
-
-> 로컬에 PostgreSQL이 이미 5432 포트를 쓰고 있다면 `-p 5433:5432`로 띄우고 접속 URL 포트도 함께 바꿔 주세요.
-
-### 2. 환경 변수 설정
-
-비밀번호·JWT 비밀키는 저장소에 커밋하지 않습니다.
 
 | 변수 | 설명 | 예시 |
 |---|---|---|
 | `DB_URL` | DB 접속 URL | `jdbc:postgresql://localhost:5432/delivery` |
 | `DB_USERNAME` | DB 계정 | `delivery` |
 | `DB_PASSWORD` | DB 비밀번호 | `delivery1234` |
-| `JWT_SECRET` | JWT 서명 키 (HS256 · **32바이트 이상**) | — |
+| `JWT_SECRET` | JWT 서명 키 (HS256 · **32바이트 이상**) | `openssl rand -base64 48`로 생성 |
+
+### 2. PostgreSQL 실행 (Docker Compose)
+
+`docker compose`는 같은 폴더의 `.env`를 자동으로 읽어 DB 계정을 만듭니다.
+
+```bash
+docker compose up -d     # 실행
+docker compose ps        # 상태 확인 (STATUS: Up)
+```
+
+| 상황 | 명령 | 데이터 |
+|---|---|---|
+| 끄기 | `docker compose stop` | 유지 |
+| 컨테이너 내리기 | `docker compose down` | 유지 |
+| DB 초기화 | `docker compose down -v` | **삭제** |
+| DB 직접 접속 | `docker compose exec db psql -U delivery -d delivery` | — |
+
+> 로컬에 PostgreSQL이 이미 5432 포트를 쓰고 있다면 `docker-compose.yml`의 포트를 `"5433:5432"`로 바꾸고 `.env`의 `DB_URL` 포트도 함께 바꿔 주세요.
 
 ### 3. 애플리케이션 실행
 
+Spring Boot는 `.env`를 자동으로 읽지 않으므로 환경 변수를 직접 넘겨야 합니다.
+
+**터미널**
+
 ```bash
+set -a; source .env; set +a
 ./gradlew bootRun
 ```
+
+**IntelliJ**
+
+1. `.env` 내용을 한 줄로 복사합니다: `paste -sd';' .env | pbcopy`
+2. 실행/디버그 구성 → `DeliveryApplication` → **환경 변수**에 붙여 넣습니다.
+3. 테스트도 DB가 필요하므로 **구성 템플릿 편집 → Gradle**의 환경 변수에도 똑같이 넣습니다.
 
 <br>
 
