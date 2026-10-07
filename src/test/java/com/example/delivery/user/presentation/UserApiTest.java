@@ -215,10 +215,4 @@ class UserApiTest extends ApiTestSupport {
                         {"username": "%s", "password": "%s"}
                         """.formatted(username, password)));
     }
-
-    private void expectInvalidField(ResultActions result, String field) throws Exception {
-        result.andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_INPUT"))
-                .andExpect(jsonPath("$.fieldErrors[0].field").value(field));
-    }
 }

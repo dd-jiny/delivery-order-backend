@@ -18,5 +18,12 @@ spring:
       hibernate:
         format_sql: true
 
+  # 페이징: 기본 크기 10, 최대 50 (초과하면 50으로 보정)
+  data:
+    web:
+      pageable:
+        default-page-size: 10
+        max-page-size: 50
+
 jwt:
   secret: ${JWT_SECRET}

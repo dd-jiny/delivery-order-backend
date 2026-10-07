@@ -78,6 +78,7 @@ flowchart TB
 - Spring Data가 만들어 주는 기본 메서드(`save`, `findById`)는 테스트하지 않습니다.
 - **직접 이름을 지은 Query Method만** 테스트합니다. 예: 삭제되지 않은 메뉴만 조회, 사장님 메뉴에 들어온 주문 조회
 - `@DataJpaTest`는 기본적으로 내장 DB로 바꾸려 하므로, Testcontainers PostgreSQL을 쓰도록 설정합니다.
+- 테스트는 롤백되지만, 같은 컨테이너를 쓰는 E2E 테스트가 남긴 데이터가 있을 수 있어 **시작 전에 모든 테이블을 비웁니다** (`DatabaseCleaner`, E2E와 공용).
 
 ### 4.4 API — E2E 테스트
 
