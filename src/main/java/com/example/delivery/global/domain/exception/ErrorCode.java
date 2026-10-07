@@ -18,7 +18,11 @@ public enum ErrorCode {
     ACCESS_DENIED(403, "접근 권한이 없습니다."),
     RESOURCE_NOT_FOUND(404, "요청한 리소스를 찾을 수 없습니다."),
     METHOD_NOT_ALLOWED(405, "지원하지 않는 HTTP 메서드입니다."),
-    INTERNAL_SERVER_ERROR(500, "서버 내부 오류가 발생했습니다.");
+    INTERNAL_SERVER_ERROR(500, "서버 내부 오류가 발생했습니다."),
+
+    // 회원
+    DUPLICATE_USERNAME(409, "이미 사용 중인 아이디입니다."),
+    INVALID_CREDENTIALS(401, "아이디 또는 비밀번호가 올바르지 않습니다.");
 
     private final int status;
     private final String message;

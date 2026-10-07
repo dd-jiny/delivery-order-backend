@@ -1,0 +1,10 @@
+# 테스트 전용 설정. main의 application.yml 위에 덮어쓴다 (@ActiveProfiles("test")).
+# DB 접속 정보는 Testcontainers(@ServiceConnection)가 제공한다.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+
+jwt:
+  secret: test-secret-key-for-jwt-must-be-at-least-32-bytes
