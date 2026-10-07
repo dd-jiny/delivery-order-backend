@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 배달 주문 서비스 백엔드 API (온보딩 개인 과제). 요구사항의 원본은 `docs/20261006 과제 발제 자료.md`이며, 기능 구현 시 해당 문서의 **PART 2(요구사항)·5-1(테스트 시나리오)·5-2(코드 점검 체크리스트)** 를 기준으로 판단한다. 요구사항에 없는 부분은 스스로 판단해 채우되, 문서의 상태 코드·권한 규칙과 어긋나지 않게 한다.
 
 - Java 21 · Spring Boot 4.1.1 · Gradle(Groovy) · PostgreSQL 18 · Spring Data JPA · Spring Security · Validation · Lombok
-- JWT 라이브러리(JJWT 등)는 아직 `build.gradle`에 없음 — 인증 구현 시 추가 필요
+- JWT는 JJWT 0.13, 테스트 DB는 Testcontainers 2.x(`org.testcontainers.postgresql.PostgreSQLContainer`)
 - 모놀리식 + **4계층 레이어드 아키텍처**(presentation · application · domain · infrastructure). 발제 자료는 3 Layer를 제시하지만, 레이어드 아키텍처 학습을 목적으로 4계층으로 진행한다. 헥사고날·클린 아키텍처는 적용하지 않는다.
 
 ## 개발 방식: TDD
@@ -75,7 +75,7 @@ set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 
 ./gradlew test --tests "com.example.delivery.menu.application.MenuServiceTest.methodName" # 단일 메서드
 ```
 
-`DeliveryApplicationTests`(`@SpringBootTest`)는 전체 컨텍스트를 띄우므로 PostgreSQL이 실행 중이어야 통과한다.
+테스트는 Testcontainers로 DB를 띄우므로 Docker Desktop만 켜져 있으면 `.env` 없이 통과한다. 공통 설정은 `src/test/java/.../support`(`TestcontainersConfig`, E2E 부모 `ApiTestSupport`, Repository 부모 `RepositoryTestSupport`).
 
 ## 아키텍처
 
