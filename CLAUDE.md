@@ -75,7 +75,7 @@ set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 
 ./gradlew test --tests "com.example.delivery.menu.application.MenuServiceTest.methodName" # 단일 메서드
 ```
 
-테스트는 Testcontainers로 DB를 띄우므로 Docker Desktop만 켜져 있으면 `.env` 없이 통과한다. 공통 설정은 `src/test/java/.../support`(`TestcontainersConfig`, E2E 부모 `ApiTestSupport`, Repository 부모 `RepositoryTestSupport`).
+테스트는 Testcontainers로 DB를 띄우므로 Docker Desktop만 켜져 있으면 `.env` 없이 통과한다. 공통 설정은 `src/test/java/.../support`(`TestcontainersConfig`, E2E 부모 `ApiTestSupport`, Repository 부모 `RepositoryTestSupport`, 두 부모가 테스트 전에 호출하는 `DatabaseCleaner`).
 
 ## 아키텍처
 
