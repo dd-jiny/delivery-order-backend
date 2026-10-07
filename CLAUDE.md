@@ -13,7 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 명령어
 
 ```bash
-docker start delivery-db                 # DB 켜기 (최초 생성 명령은 README 참고)
+docker compose up -d                     # DB 켜기 (.env 필요, 없으면 cp .env.example .env)
+docker compose down -v                   # DB 초기화 (enum CHECK 제약 갱신 등)
+set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 실행 전 필수)
 ./gradlew bootRun                        # 실행
 ./gradlew build                          # 빌드 + 테스트
 ./gradlew test                           # 전체 테스트
@@ -57,6 +59,12 @@ JPA 엔티티와 도메인 모델을 분리하지 않는다 (별도 도메인 �
 주문 상태 전이 (이 외의 전이는 400 또는 409 중 하나로 **일관되게** 거절):
 - CUSTOMER: `ORDERED → PAID`(결제 API를 통해서만), `ORDERED → CANCELED`
 - OWNER: `PAID → ACCEPTED`, `ACCEPTED → COMPLETED`
+
+### 예외 처리
+
+- 비즈니스 규칙 위반은 `throw new BusinessException(ErrorCode.XXX)`로 던지고, `global/presentation/GlobalExceptionHandler`가 `ErrorResponse`로 변환한다
+- 도메인별 에러 코드는 `global/domain/exception/ErrorCode`에 추가한다. domain이 Spring Web에 의존하지 않도록 `HttpStatus`가 아닌 `int status`를 쓴다
+- 상태 흐름 규칙 위반(이미 결제된 주문 결제, 결제 후 취소 등)은 **409로 통일**
 
 ## 반드시 지킬 규칙 (과제 요구사항)
 
