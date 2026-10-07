@@ -145,25 +145,47 @@ stateDiagram-v2
 
 <br>
 
+## 🏛 아키텍처
+
+발제 자료는 3 Layer(Controller – Service – Repository)를 제시하지만, **레이어드 아키텍처 학습을 목적으로 4계층**으로 진행합니다.
+
+```
+presentation  →  application  →  domain  ←  infrastructure
+```
+
+| 계층 | 책임 | 주요 구성 |
+|---|---|---|
+| **presentation** | HTTP 요청·응답, 입력 검증 | Controller · 요청/응답 DTO · `@Valid` |
+| **application** | 유스케이스 흐름, 트랜잭션 | Service · `@Transactional` |
+| **domain** | 비즈니스 규칙 | Entity(비즈니스 메서드) · enum · Repository 인터페이스 |
+| **infrastructure** | 기술 구현 | JWT · Spring Security 필터·설정 |
+
+- 의존은 **위에서 아래로 한 방향**입니다. presentation이 Repository를 직접 부르지 않습니다.
+- domain은 infrastructure(JWT, Security 등)를 알지 못합니다.
+- 주문 상태 전이, 본인 확인, 총액 계산 같은 **비즈니스 규칙은 엔티티 메서드**에 둡니다. Service는 "조회 → 도메인 메서드 호출 → 저장" 흐름만 담당합니다.
+  - 예: `order.pay()` · `order.cancel()` · `order.accept()` · `order.complete()` · `menu.isOwnedBy(userId)`
+- JPA 엔티티와 도메인 모델은 분리하지 않습니다. JPA 엔티티가 곧 도메인 모델입니다.
+
+<br>
+
 ## 📁 패키지 구조
 
-도메인별로 먼저 나누고, 그 안을 3 Layer(Controller – Service – Repository)로 나눕니다.
+도메인별로 먼저 나누고, 그 안을 4계층으로 나눕니다.
 
 ```
 src/main/java/com/example/delivery
-├── global                 # 여러 도메인이 같이 쓰는 것
-│   ├── config             # SecurityConfig 등
-│   ├── security           # JwtUtil, JwtAuthenticationFilter
-│   └── entity             # BaseEntity (JPA Auditing)
-├── user                   # 회원 · 인증
-│   ├── controller
-│   ├── service
-│   ├── repository
-│   ├── entity
-│   └── dto (request / response)
-├── menu                   # user와 같은 구조
-├── order                  # user와 같은 구조
-├── payment                # user와 같은 구조
+├── global                     # 여러 도메인이 같이 쓰는 것
+│   ├── presentation           # 공통 예외 응답 (RestControllerAdvice)
+│   ├── domain                 # BaseEntity (JPA Auditing), 공통 예외
+│   └── infrastructure         # SecurityConfig, JwtProvider, JwtAuthenticationFilter
+├── user                       # 회원 · 인증
+│   ├── presentation           # UserController, dto/request, dto/response
+│   ├── application            # UserService
+│   ├── domain                 # User, UserRole, UserRepository
+│   └── infrastructure
+├── menu                       # user와 같은 구조
+├── order                      # user와 같은 구조
+├── payment                    # user와 같은 구조
 └── DeliveryApplication.java
 ```
 
