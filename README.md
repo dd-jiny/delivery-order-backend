@@ -158,12 +158,17 @@ stateDiagram-v2
 
 ## 📐 설계 문서
 
-| 문서 | 위치 |
-|---|---|
-| ERD | _작성 예정_ |
-| 테이블 명세서 | _작성 예정_ |
-| API 명세서 | _작성 예정_ |
-| 인프라 설계도 | _작성 예정_ |
+설계 순서와 작성 원칙은 [설계 가이드](docs/design/00-design-guide.md)를 참고하세요.
+
+| # | 문서 | 내용 |
+|---|---|---|
+| 01 | [요구사항 정의서](docs/design/01-requirements.md) | 기능 요구사항, 권한 매트릭스, 검증 순서, 정책 결정 |
+| 02 | [도메인 설계](docs/design/02-domain.md) | ERD, 테이블 명세서, 동시성·Soft Delete·스냅샷 결정 |
+| 03 | [API 명세서](docs/design/03-api-spec.md) | URL, 요청·응답, 상태 코드, 에러 코드 |
+| 04 | [클래스 다이어그램](docs/design/04-class-diagram.md) | 도메인 모델, 4계층 구조, 엔티티 메서드 |
+| 05 | [시퀀스 다이어그램](docs/design/05-sequence-diagram.md) | 로그인·인증 필터, 주문 생성, 결제(동시 결제 포함) |
+| 06 | [아키텍처 구성도](docs/design/06-architecture.md) | 실행 환경, 요청 흐름, 테스트 환경 |
+| 07 | [테스트 전략](docs/design/07-test-strategy.md) | TDD 진행 순서, 계층별 테스트 방식 |
 
 <br>
 
@@ -210,6 +215,31 @@ src/main/java/com/example/delivery
 ├── payment                    # user와 같은 구조
 └── DeliveryApplication.java
 ```
+
+<br>
+
+## 🧪 개발 방식: TDD
+
+**모든 구현은 TDD(Test-Driven Development)로 진행합니다. 프로덕션 코드보다 테스트 코드를 먼저 작성합니다.**
+
+```
+🔴 Red          실패하는 테스트를 먼저 작성하고, 실패하는 것을 확인
+   ↓
+🟢 Green        테스트를 통과하는 최소한의 코드 작성
+   ↓
+🔵 Refactor     테스트가 통과하는 상태를 유지하며 코드 정리
+```
+
+테스트 케이스는 [요구사항 정의서](docs/design/01-requirements.md)의 기능별 규칙과 실패 조건(상태 코드)에서 도출합니다.
+
+| 대상 | 테스트 방식 |
+|---|---|
+| domain | 순수 단위 테스트 (JUnit) |
+| application | 단위 테스트 (Mockito) |
+| repository | `@DataJpaTest` + Testcontainers |
+| API | E2E (`@SpringBootTest` + MockMvc + Testcontainers) |
+
+기능 하나를 **도메인 → Service → Repository → API** 순서(안에서 바깥으로)로 구현합니다. 테스트 실행에는 Docker Desktop이 필요합니다. 상세는 [테스트 전략](docs/design/07-test-strategy.md)을 참고하세요.
 
 <br>
 
