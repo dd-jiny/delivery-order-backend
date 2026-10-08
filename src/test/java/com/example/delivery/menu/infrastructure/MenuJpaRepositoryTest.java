@@ -1,11 +1,13 @@
-package com.example.delivery.menu.domain;
+package com.example.delivery.menu.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.example.delivery.menu.domain.Menu;
+import com.example.delivery.menu.domain.MenuFixture;
 import com.example.delivery.support.RepositoryTestSupport;
 import com.example.delivery.user.domain.User;
 import com.example.delivery.user.domain.UserFixture;
-import com.example.delivery.user.domain.UserRepository;
+import com.example.delivery.user.infrastructure.UserJpaRepository;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -18,15 +20,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
-class MenuRepositoryTest extends RepositoryTestSupport {
+class MenuJpaRepositoryTest extends RepositoryTestSupport {
 
     private static final LocalDateTime DELETED_AT = LocalDateTime.of(2026, 10, 7, 14, 30);
 
     @Autowired
-    private MenuRepository menuRepository;
+    private MenuJpaRepository menuRepository;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserJpaRepository userRepository;
 
     @Autowired
     private EntityManager entityManager;

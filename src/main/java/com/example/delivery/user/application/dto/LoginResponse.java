@@ -1,4 +1,4 @@
-package com.example.delivery.user.presentation;
+package com.example.delivery.user.application.dto;
 
 public record LoginResponse(
         String accessToken,

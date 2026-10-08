@@ -1,8 +1,9 @@
 package com.example.delivery.menu.presentation;
 
+import com.example.delivery.global.application.dto.PageResponse;
 import com.example.delivery.global.infrastructure.security.AuthUser;
-import com.example.delivery.global.presentation.PageResponse;
-import com.example.delivery.menu.application.MenuService;
+import com.example.delivery.menu.application.MenuFacade;
+import com.example.delivery.menu.application.dto.MenuResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -23,25 +24,25 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class MenuController {
 
-    private final MenuService menuService;
+    private final MenuFacade menuFacade;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MenuResponse create(@AuthenticationPrincipal AuthUser authUser, @Valid @RequestBody MenuRequest request) {
-        return menuService.create(authUser.userId(), request);
+        return menuFacade.create(authUser.userId(), request.toCommand());
     }
 
     /**
-     * page·size만 사용한다. 기본 크기 10, 최대 50은 spring.data.web.pageable 설정이 보정하고, 정렬은 Service가 최신 등록순으로 고정한다.
+     * page·size만 사용한다. 기본 크기 10, 최대 50은 spring.data.web.pageable 설정이 보정하고, 정렬은 MenuRepository 구현이 최신 등록순으로 고정한다.
      */
     @GetMapping
     public PageResponse<MenuResponse> getMenus(Pageable pageable) {
-        return menuService.getMenus(pageable.getPageNumber(), pageable.getPageSize());
+        return menuFacade.getMenus(pageable.getPageNumber(), pageable.getPageSize());
     }
 
     @GetMapping("/{menuId}")
     public MenuResponse getMenu(@PathVariable Long menuId) {
-        return menuService.getMenu(menuId);
+        return menuFacade.getMenu(menuId);
     }
 
     @PutMapping("/{menuId}")
@@ -50,12 +51,12 @@ public class MenuController {
             @PathVariable Long menuId,
             @Valid @RequestBody MenuRequest request
     ) {
-        return menuService.update(authUser.userId(), menuId, request);
+        return menuFacade.update(authUser.userId(), menuId, request.toCommand());
     }
 
     @DeleteMapping("/{menuId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@AuthenticationPrincipal AuthUser authUser, @PathVariable Long menuId) {
-        menuService.delete(authUser.userId(), menuId);
+        menuFacade.delete(authUser.userId(), menuId);
     }
 }

@@ -1,4 +1,4 @@
-package com.example.delivery.global.presentation;
+package com.example.delivery.global.application.dto;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

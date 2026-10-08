@@ -1,9 +1,11 @@
-package com.example.delivery.user.domain;
+package com.example.delivery.user.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.delivery.support.RepositoryTestSupport;
+import com.example.delivery.user.domain.User;
+import com.example.delivery.user.domain.UserFixture;
 import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -11,10 +13,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 
-class UserRepositoryTest extends RepositoryTestSupport {
+class UserJpaRepositoryTest extends RepositoryTestSupport {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserJpaRepository userRepository;
 
     @Test
     @DisplayName("같은 아이디의 회원이 있으면 existsByUsername이 true다")

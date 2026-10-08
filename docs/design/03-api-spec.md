@@ -5,6 +5,8 @@
 | 버전 | 날짜 | 변경 내용 | 관련 요구사항 |
 |---|---|---|---|
 | v1.0 | 2026-10-07 | 최초 작성 (필수 API 13개, 도전 API 2개, 공통 규칙, 에러 응답) | 01 v1.4, 02 v1.3, 04 v1.3 |
+| v1.2 | 2026-10-08 | 회원가입 역할 값 오류(`ADMIN` 등)도 `fieldErrors`에 `role`을 담아 응답 (역할을 문자열로 받아 `@Pattern` 검증, 04 D-32) | 04 v1.7 |
+| v1.1 | 2026-10-07 | 7장 DTO 목록에 위치 표시: 요청 DTO는 presentation, Facade 입력(Command)·응답 DTO는 application (API 모양 변화 없음) | 04 v1.5 D-30, v1.6 D-31 |
 
 <br>
 
@@ -172,7 +174,7 @@
 
 ### 5.1 Security URL 규칙
 
-[01 권한 매트릭스](01-requirements.md#74-권한-매트릭스)의 ❌(역할만으로 거절)를 그대로 옮긴 것입니다. 🔒(본인 것만)는 Service에서 검사합니다. **위에서부터 순서대로** 적용하므로, 구체적인 규칙을 일반 규칙(`/api/orders/*`)보다 먼저 둡니다.
+[01 권한 매트릭스](01-requirements.md#74-권한-매트릭스)의 ❌(역할만으로 거절)를 그대로 옮긴 것입니다. 🔒(본인 것만)는 도메인 서비스에서 검사합니다. **위에서부터 순서대로** 적용하므로, 구체적인 규칙을 일반 규칙(`/api/orders/*`)보다 먼저 둡니다.
 
 | Method | URL | 규칙 |
 |---|---|---|
@@ -208,7 +210,7 @@
 |---|---|---|---|---|
 | `username` | String | O | 4~20자 | 로그인 아이디 |
 | `password` | String | O | 8~20자 (D-21) | 비밀번호 |
-| `role` | String | O | `CUSTOMER` 또는 `OWNER` | 역할 |
+| `role` | String | O | `CUSTOMER` 또는 `OWNER` (아니면 400, `fieldErrors`에 `role`) | 역할 |
 
 **요청 예시**
 
@@ -660,15 +662,15 @@ Content-Type: application/json
 
 ## 7. DTO 목록
 
-[04 클래스 다이어그램](04-class-diagram.md)의 presentation 계층 DTO 이름입니다.
+[04 클래스 다이어그램](04-class-diagram.md)의 DTO 이름입니다. 요청 DTO는 presentation에 두고 `toCommand()`로 application의 입력(Command)으로 바꿉니다. 응답 DTO는 application이 만들어 presentation이 그대로 응답합니다(04 D-30).
 
-| 도메인 | 요청 DTO | 응답 DTO |
-|---|---|---|
-| user | `SignupRequest`, `LoginRequest` | `UserResponse`, `LoginResponse` |
-| menu | `MenuRequest` (등록·수정 공통) | `MenuResponse` |
-| order | `OrderCreateRequest` | `OrderResponse` |
-| payment | `PaymentRequest` | `PaymentResponse` |
-| global | — | `PageResponse<T>`, `ErrorResponse` |
+| 도메인 | 요청 DTO (presentation) | Facade 입력 (application) | 응답 DTO (application) |
+|---|---|---|---|
+| user | `SignupRequest`, `LoginRequest` | `SignupCommand`, `LoginCommand` | `UserResponse`, `LoginResponse` |
+| menu | `MenuRequest` (등록·수정 공통) | `MenuCommand` | `MenuResponse` |
+| order | `OrderCreateRequest` | `OrderCreateCommand` | `OrderResponse` |
+| payment | `PaymentRequest` | `PaymentCommand` | `PaymentResponse` |
+| global | — | — | `PageResponse<T>` (application), `ErrorResponse` (presentation) |
 
 <br>
 
