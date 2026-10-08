@@ -38,3 +38,7 @@ out/
 
 ### Env ###
 .env
+
+### 레포에 올리지 않는 로컬 문서 (발제 자료, 설계 가이드) ###
+docs/20261006 과제 발제 자료.md
+docs/design/00-design-guide.md
