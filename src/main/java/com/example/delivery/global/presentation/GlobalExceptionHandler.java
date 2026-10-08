@@ -6,6 +6,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,6 +22,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
         return toResponse(ErrorResponse.of(e.getErrorCode(), e.getMessage()));
+    }
+
+    /**
+     * 같은 주문을 동시에 바꾸려다 Order의 @Version이 맞지 않은 경우 (예: 동시 결제). 먼저 커밋한 요청만 반영된다.
+     */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailureException(ObjectOptimisticLockingFailureException e) {
+        return toResponse(ErrorResponse.of(ErrorCode.CONCURRENT_MODIFICATION));
     }
 
     /** @Valid 검증 실패 */

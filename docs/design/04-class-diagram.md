@@ -5,6 +5,7 @@
 | 버전 | 날짜 | 변경 내용 | 관련 요구사항 |
 |---|---|---|---|
 | v1.0 | 2026-10-07 | 최초 작성 (도메인 모델, 4계층 구조, 결제 책임 분리, 에러 코드) | 01 요구사항 정의서 v1.1, 02 도메인 설계 v1.0 |
+| v1.8 | 2026-10-08 | 3단계 구현 반영: `OrderService`에 `cancel`·`accept`·`complete`(본인 확인 404→403 후 엔티티 상태 변경) 추가 — `MenuService.update`·`delete`와 같은 모양. 주문 목록 Query Method에 같은 시각 대비 `id` 내림차순(`...OrderByCreatedAtDescIdDesc`) | 구현 |
 | v1.7 | 2026-10-08 | domain enum을 application 밖으로 내보내지 않음(D-32): Request·Command·Response의 역할·상태는 문자열. D-13에 `AuthUser.role` 전달 이유 보강 | 구현 후 구조 점검 |
 | v1.6 | 2026-10-08 | 2.5단계 리팩터링: application은 Facade(유스케이스 조율·트랜잭션·DTO), domain에 도메인 서비스(조회·404·403·저장)를 둔다(D-31). D-10·D-11·D-12·D-13·D-30, 5·6·7장 갱신. 3·4단계(주문·결제) 설계도 같은 구조로 | 구현 후 구조 점검 |
 | v1.5 | 2026-10-07 | 2.5단계 리팩터링: 패키지는 도메인 먼저(D-28), Repository를 domain 인터페이스 + infrastructure 구현으로 분리(D-29), application이 입력(Command)·출력(Response) DTO 소유(D-30). 5장 다이어그램·클래스 목록·Repository 메서드 갱신 | 구현 후 구조 점검 |
@@ -261,6 +262,9 @@ classDiagram
             +getCustomerOrder(customerId, orderId) Order
             +getOwnerOrder(ownerId, orderId) Order
             +getOrders(userId, UserRole) List~Order~
+            +cancel(customerId, orderId) Order
+            +accept(ownerId, orderId) Order
+            +complete(ownerId, orderId) Order
         }
         class PaymentService {
             +pay(order, method) Payment
@@ -334,8 +338,8 @@ domain 인터페이스는 **무엇이 필요한지**를 도메인 언어로 정�
 | | `getReferenceById(id)` | `getReferenceById` | 조회 없이 회원 참조 (메뉴 주인, 주문자) | F-03, F-08 |
 | `MenuRepository` | `findAllExcludingDeleted(page, size)` | `findAllByDeletedAtIsNull(Pageable)` + 구현이 최신 등록순(`createdAt`↓, `id`↓) 지정 | 삭제되지 않은 메뉴 목록 (페이징) | F-04, C-03 |
 | | `findByIdExcludingDeleted(id)` | `findByIdAndDeletedAtIsNull` | 삭제되지 않은 메뉴 단건 (없으면 404) | F-05~F-08 |
-| `OrderRepository` | `findAllByCustomerId(customerId)` | `findAllByCustomerIdOrderByCreatedAtDesc` + `@EntityGraph("customer")` | 손님의 주문 목록 (최신순) | F-09 |
-| | `findAllByMenuOwnerId(ownerId)` | `findAllByMenuOwnerIdOrderByCreatedAtDesc` + `@EntityGraph("customer")` | 사장님 메뉴에 들어온 주문 목록 (최신순, 삭제된 메뉴 포함) | F-09 |
+| `OrderRepository` | `findAllByCustomerId(customerId)` | `findAllByCustomerIdOrderByCreatedAtDescIdDesc` + `@EntityGraph("customer")` | 손님의 주문 목록 (최신순, 같은 시각이면 `id`↓) | F-09 |
+| | `findAllByMenuOwnerId(ownerId)` | `findAllByMenuOwnerIdOrderByCreatedAtDescIdDesc` + `@EntityGraph("customer")` | 사장님 메뉴에 들어온 주문 목록 (최신순, 삭제된 메뉴 포함) | F-09 |
 | `PaymentRepository` | `findAllByOrderId(orderId)` | `findAllByOrderId` | 주문의 결제 내역 | C-02 |
 
 - 주문 취소·수락·결제 대상 조회는 `findById`(domain 인터페이스에 선언, `JpaRepository` 기본 메서드에 위임)를 씁니다. 주문은 Soft Delete 대상이 아닙니다.
