@@ -22,7 +22,7 @@ class UserApiTest extends ApiTestSupport {
     class Signup {
 
         @Test
-        @DisplayName("가입하면 201과 회원 정보를 응답한다 (시나리오 #1)")
+        @DisplayName("사장님으로 가입하면 201과 회원 정보를 응답한다 (시나리오 #1, #2)")
         void success() throws Exception {
             // when
             ResultActions result = signup("owner1", "password123", "OWNER");
@@ -33,6 +33,18 @@ class UserApiTest extends ApiTestSupport {
                     .andExpect(jsonPath("$.username").value("owner1"))
                     .andExpect(jsonPath("$.role").value("OWNER"))
                     .andExpect(jsonPath("$.createdAt").value(matchesPattern("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}")));
+        }
+
+        @Test
+        @DisplayName("손님으로 가입하면 201과 CUSTOMER 역할을 응답한다 (시나리오 #3, #4)")
+        void customer() throws Exception {
+            // when
+            ResultActions result = signup("cust1", "password123", "CUSTOMER");
+
+            // then
+            result.andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.username").value("cust1"))
+                    .andExpect(jsonPath("$.role").value("CUSTOMER"));
         }
 
         @Test

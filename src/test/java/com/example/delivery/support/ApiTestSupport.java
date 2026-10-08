@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
@@ -54,6 +55,40 @@ public abstract class ApiTestSupport {
                                 """.formatted(username, PASSWORD)))
                 .andReturn().getResponse().getContentAsString();
         return "Bearer " + JsonPath.read(body, "$.accessToken");
+    }
+
+    /** 메뉴를 등록하고 메뉴 ID를 돌려준다. */
+    protected long createMenuId(String ownerToken, String name, long price) throws Exception {
+        String body = mockMvc.perform(post("/api/menus")
+                        .header(HttpHeaders.AUTHORIZATION, ownerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name": "%s", "price": %d}
+                                """.formatted(name, price)))
+                .andReturn().getResponse().getContentAsString();
+        return readId(body, "$.menuId");
+    }
+
+    /** 주문을 생성하고 주문 ID를 돌려준다. */
+    protected long createOrderId(String customerToken, long menuId, int quantity) throws Exception {
+        String body = mockMvc.perform(post("/api/orders")
+                        .header(HttpHeaders.AUTHORIZATION, customerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"menuId": %d, "quantity": %d, "deliveryAddress": "서울시 강남구 테헤란로 1"}
+                                """.formatted(menuId, quantity)))
+                .andReturn().getResponse().getContentAsString();
+        return readId(body, "$.orderId");
+    }
+
+    /** 카드로 결제한다. */
+    protected ResultActions pay(String customerToken, long orderId) throws Exception {
+        return mockMvc.perform(post("/api/orders/{orderId}/payments", orderId)
+                .header(HttpHeaders.AUTHORIZATION, customerToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"method": "CARD"}
+                        """));
     }
 
     protected static long readId(String body, String path) {
