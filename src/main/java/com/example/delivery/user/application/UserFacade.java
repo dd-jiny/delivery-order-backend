@@ -2,7 +2,6 @@ package com.example.delivery.user.application;
 
 import com.example.delivery.global.domain.exception.BusinessException;
 import com.example.delivery.global.domain.exception.ErrorCode;
-import com.example.delivery.global.infrastructure.security.JwtProvider;
 import com.example.delivery.user.application.dto.LoginCommand;
 import com.example.delivery.user.application.dto.LoginResponse;
 import com.example.delivery.user.application.dto.SignupCommand;
@@ -17,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 회원 유스케이스 흐름을 조율한다. 비밀번호 암호화·대조와 토큰 발급(기술)을 도메인 서비스와 엮는다.
+ * 토큰 발급은 TokenProvider 인터페이스에만 의존하고 JWT 구현(JwtProvider)은 모른다 (04 D-33).
  */
 @Component
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class UserFacade {
 
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtProvider jwtProvider;
+    private final TokenProvider tokenProvider;
 
     /**
      * 역할 문자열은 presentation의 @Pattern으로 검증된 값이라 enum 변환이 실패하지 않는다.
@@ -45,7 +45,7 @@ public class UserFacade {
         if (!passwordEncoder.matches(command.password(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
         }
-        String token = jwtProvider.createToken(user.getId(), user.getUsername(), user.getRole());
-        return LoginResponse.bearer(token, jwtProvider.getExpirationSeconds());
+        String token = tokenProvider.createToken(user.getId(), user.getUsername(), user.getRole());
+        return LoginResponse.bearer(token, tokenProvider.getExpirationSeconds());
     }
 }

@@ -6,6 +6,7 @@
 |---|---|---|---|
 | v1.0 | 2026-10-07 | 최초 작성 (로그인·인증 필터, 주문 생성, 결제 흐름, 트랜잭션 경계) | 01 v1.5, 03 v1.0, 04 v1.4 |
 | v1.1 | 2026-10-07 | 04 D-29·D-30 반영: Service에 Command 전달, 메뉴 조회 메서드 이름 `findByIdExcludingDeleted` | 04 v1.5 |
+| v1.3 | 2026-10-08 | 04 D-33 반영: 로그인 흐름에서 Facade가 부르는 대상을 `TokenProvider`(구현 `JwtProvider`)로 표기 | 04 v1.9 |
 | v1.2 | 2026-10-08 | 04 D-31 반영: 로그인·주문 생성·결제 흐름을 Facade(application) + 도메인 서비스(domain)로 다시 그림. 트랜잭션 경계는 Facade 메서드(D-27) | 04 v1.6 |
 
 <br>
@@ -77,7 +78,7 @@ sequenceDiagram
     participant S as UserService
     participant R as UserRepository
     participant PE as PasswordEncoder
-    participant J as JwtProvider
+    participant J as TokenProvider<br>(구현: JwtProvider)
 
     U->>C: POST /api/auth/login {username, password}
     C->>C: @Valid 검증
@@ -108,7 +109,7 @@ sequenceDiagram
 
 **읽는 법**
 - 실패 이유 세 가지(회원 없음, 탈퇴, 비밀번호 불일치)가 **모두 같은 응답**입니다. 어느 이유인지 알려주지 않아서 아이디 존재 여부가 새지 않습니다.
-- 회원을 찾는 일(Repository 필요)은 도메인 서비스가, 비밀번호 대조와 토큰 발급(보안 기술)은 Facade가 맡습니다. domain이 `PasswordEncoder`·`JwtProvider`를 모르게 하기 위해서입니다(04 D-31).
+- 회원을 찾는 일(Repository 필요)은 도메인 서비스가, 비밀번호 대조와 토큰 발급(보안 기술)은 Facade가 맡습니다. domain이 `PasswordEncoder`·`TokenProvider`를 모르게 하기 위해서입니다(04 D-31). Facade도 두 인터페이스만 알고 BCrypt·JWT 구현은 모릅니다(04 D-33).
 - 로그인 경로(`/api/auth/**`)는 인증이 필요 없어서 인증 필터가 아무것도 하지 않고 통과시킵니다.
 - 만료 시각은 `JwtProvider`가 주입받은 `Clock`으로 계산합니다. 테스트에서 시각을 고정해 만료를 검증할 수 있습니다(07 결정성 원칙).
 

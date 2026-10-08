@@ -7,6 +7,7 @@
 | v1.0 | 2026-10-07 | 최초 작성 (TDD 방식, 테스트 DB, 계층별 테스트 방식, 진행 순서 결정) | 01 요구사항 정의서 전체 |
 | v1.1 | 2026-10-07 | 6장 테스트 작성 규칙 보강 (동작 검증, 리터럴 기대값, 독립성·결정성, 픽스처, TDD 진행 원칙) | CLAUDE.md 테스트 코드 작성 원칙 |
 | v1.2 | 2026-10-07 | 발제 대조 검증 반영: 5-1 ⑥ DB 직접 확인 항목의 자동 검증(4.5), `/error`·CSRF 함정 검증을 E2E 필수 항목으로 추가 | 발제 3-5 ②, 5-1 ⑥ |
+| v1.5 | 2026-10-08 | Facade 테스트의 토큰 Mock 대상을 `TokenProvider` 인터페이스로 (04 D-33) | 04 v1.9 |
 | v1.4 | 2026-10-08 | Service 테스트를 도메인 서비스 테스트(Repository Mock)와 Facade 테스트(도메인 서비스 Mock, 조율·기술 처리가 있는 것만)로 나눔 | 04 v1.6 D-31 |
 | v1.3 | 2026-10-07 | Repository 테스트 위치를 `{도메인}/infrastructure`로 이동, 대상은 `XxxJpaRepository`의 Query Method와 `XxxRepositoryImpl`의 약속(정렬 등) | 04 v1.5 D-29 |
 
@@ -74,7 +75,7 @@ flowchart TB
 
 - `@ExtendWith(MockitoExtension.class)`를 씁니다. **엔티티는 Mock으로 만들지 않습니다.** 진짜 엔티티를 써야 도메인 규칙이 함께 동작합니다. ID가 필요하면 테스트 픽스처에서 설정합니다.
 - **도메인 서비스** (`{도메인}/domain/*ServiceTest`): Repository만 Mock으로 둡니다. 01의 [검증 순서(D-01)](01-requirements.md#71-검증-순서-d-01) ④~⑥(404 → 403 → 409)을 이 계층에서 검증합니다. 특히 **여러 규칙을 동시에 어긴 경우**(남의 주문 + 이미 결제됨 → 403)를 반드시 포함합니다.
-- **Facade** (`{도메인}/application/*FacadeTest`): 도메인 서비스와 `PasswordEncoder`·`JwtProvider`를 Mock으로 둡니다. 여러 도메인을 조율하거나(주문 생성, 결제) 기술을 엮는(로그인의 비밀번호 대조·토큰 발급) Facade만 작성합니다. 도메인 서비스를 그대로 부르기만 하는 메서드는 "호출했는지"만 확인하는 구현 검증이 되므로 단위 테스트를 쓰지 않고 E2E가 검증합니다.
+- **Facade** (`{도메인}/application/*FacadeTest`): 도메인 서비스와 `PasswordEncoder`·`TokenProvider`(인터페이스)를 Mock으로 둡니다. 여러 도메인을 조율하거나(주문 생성, 결제) 기술을 엮는(로그인의 비밀번호 대조·토큰 발급) Facade만 작성합니다. 도메인 서비스를 그대로 부르기만 하는 메서드는 "호출했는지"만 확인하는 구현 검증이 되므로 단위 테스트를 쓰지 않고 E2E가 검증합니다.
 
 ### 4.3 repository — `@DataJpaTest`
 

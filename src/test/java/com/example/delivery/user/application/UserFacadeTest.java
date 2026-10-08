@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 
 import com.example.delivery.global.domain.exception.BusinessException;
 import com.example.delivery.global.domain.exception.ErrorCode;
-import com.example.delivery.global.infrastructure.security.JwtProvider;
 import com.example.delivery.user.application.dto.LoginCommand;
 import com.example.delivery.user.application.dto.LoginResponse;
 import com.example.delivery.user.application.dto.SignupCommand;
@@ -29,6 +28,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * 비밀번호 암호화·대조와 토큰 발급을 도메인 서비스와 엮는 흐름을 검증한다.
+ * 토큰 발급은 인터페이스(TokenProvider)만 Mock으로 둔다 — Facade가 JWT 구현을 모르는지도 함께 확인된다.
  */
 @ExtendWith(MockitoExtension.class)
 class UserFacadeTest {
@@ -40,7 +40,7 @@ class UserFacadeTest {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private JwtProvider jwtProvider;
+    private TokenProvider tokenProvider;
 
     @InjectMocks
     private UserFacade userFacade;
@@ -80,8 +80,8 @@ class UserFacadeTest {
             User owner = UserFixture.withId(UserFixture.owner(), 1L);
             given(userService.getLoginUser("owner1")).willReturn(owner);
             given(passwordEncoder.matches("password123", owner.getPassword())).willReturn(true);
-            given(jwtProvider.createToken(1L, "owner1", UserRole.OWNER)).willReturn("issued-token");
-            given(jwtProvider.getExpirationSeconds()).willReturn(3600L);
+            given(tokenProvider.createToken(1L, "owner1", UserRole.OWNER)).willReturn("issued-token");
+            given(tokenProvider.getExpirationSeconds()).willReturn(3600L);
 
             // when
             LoginResponse response = userFacade.login(command);
@@ -103,7 +103,7 @@ class UserFacadeTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
-            verify(jwtProvider, never()).createToken(any(), any(), any());
+            verify(tokenProvider, never()).createToken(any(), any(), any());
         }
     }
 }

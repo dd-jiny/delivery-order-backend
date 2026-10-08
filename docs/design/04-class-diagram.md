@@ -5,6 +5,7 @@
 | 버전 | 날짜 | 변경 내용 | 관련 요구사항 |
 |---|---|---|---|
 | v1.0 | 2026-10-07 | 최초 작성 (도메인 모델, 4계층 구조, 결제 책임 분리, 에러 코드) | 01 요구사항 정의서 v1.1, 02 도메인 설계 v1.0 |
+| v1.9 | 2026-10-08 | 토큰 발급을 application의 `TokenProvider` 인터페이스로 추상화(D-33). `UserFacade`가 JWT 구현(`JwtProvider`)을 모르게 함. D-31·5.2 갱신 | DIP 점검 |
 | v1.8 | 2026-10-08 | 3단계 구현 반영: `OrderService`에 `cancel`·`accept`·`complete`(본인 확인 404→403 후 엔티티 상태 변경) 추가 — `MenuService.update`·`delete`와 같은 모양. 주문 목록 Query Method에 같은 시각 대비 `id` 내림차순(`...OrderByCreatedAtDescIdDesc`) | 구현 |
 | v1.7 | 2026-10-08 | domain enum을 application 밖으로 내보내지 않음(D-32): Request·Command·Response의 역할·상태는 문자열. D-13에 `AuthUser.role` 전달 이유 보강 | 구현 후 구조 점검 |
 | v1.6 | 2026-10-08 | 2.5단계 리팩터링: application은 Facade(유스케이스 조율·트랜잭션·DTO), domain에 도메인 서비스(조회·404·403·저장)를 둔다(D-31). D-10·D-11·D-12·D-13·D-30, 5·6·7장 갱신. 3·4단계(주문·결제) 설계도 같은 구조로 | 구현 후 구조 점검 |
@@ -51,8 +52,9 @@
 | D-28 | 패키지 구성 | **도메인 먼저, 그 안을 계층별로** (`menu/presentation`, `menu/application`, `menu/domain`, `menu/infrastructure`) | 브랜치·TDD가 기능(도메인) 단위라 한 기능의 변경이 한 폴더에 모인다. 도메인 간 의존(payment → order → menu → user)이 import 경로로 바로 보인다. 도메인마다 4계층이 있어 계층 구분도 그대로 지켜진다 | 계층 먼저(`presentation/menu`…) 나눠 4계층이 최상위 폴더에서 바로 보이는 명확함 |
 | D-29 | Repository 위치 | **인터페이스는 domain, 구현은 infrastructure.** `domain/MenuRepository`(순수 인터페이스) ← `infrastructure/MenuRepositoryImpl`이 구현하고, 그 안에서 `infrastructure/MenuJpaRepository`(Spring Data)를 사용 | domain·application이 DB 기술(Spring Data JPA)을 모른다. DB 접근이라는 기술 구현이 infrastructure에 모인다. Service 테스트는 domain 인터페이스만 Mock한다. 정렬 컬럼 같은 DB 세부(`createdAt`·`id`)도 구현 안에 둔다 | `JpaRepository`를 상속한 인터페이스 하나로 끝내는 간결함 (도메인마다 클래스 2개 추가) |
 | D-30 | Facade 입력·출력 DTO | **application이 소유** (`application/dto`). 입력은 `XxxCommand`, 출력은 `XxxResponse`. Controller가 `request.toCommand()`로 변환하고, Facade가 돌려준 Response를 그대로 응답한다. 도메인 서비스는 DTO를 모르고 값·엔티티만 주고받는다 | 의존이 presentation → application 한 방향이 된다 (전에는 Service가 presentation의 Request·Response를 import해 양방향). HTTP 형식·`@Valid`는 Request에, 유스케이스 입력은 Command에 둔다 | Request를 Service에 그대로 넘기는 간결함. 응답 DTO에 `@JsonFormat`(Jackson 어노테이션)이 application에 남는 것은 허용 |
-| D-31 | 유스케이스 흐름과 도메인 작업의 분리 | **application에는 Facade(`XxxFacade`), domain에는 도메인 서비스(`XxxService`).** Facade는 트랜잭션·도메인 서비스 호출 순서·기술(`PasswordEncoder`·`JwtProvider`)·DTO 변환을 맡고, 도메인 서비스는 Repository가 필요한 도메인 단위 작업(조회·404·403·저장, 엔티티에 일 시키기)을 맡는다. 규칙 자체는 계속 엔티티에 둔다 | 주문 생성(메뉴+회원+주문)·결제(주문+결제)처럼 여러 도메인이 엮이는 유스케이스를 Facade가 조율하고, "없는 메뉴 404" 같은 작업을 도메인 서비스 하나로 메뉴·주문이 함께 재사용한다. application = 유스케이스 조율이라는 역할이 코드에 드러난다. 도메인 서비스는 Spring 중 `@Service`(spring-context)만 쓰고 트랜잭션·DTO·Security를 모른다 | 애플리케이션 서비스 하나로 끝내는 간결함. 단순 CRUD에서 Facade가 도메인 서비스를 그대로 부르는 통과용 코드가 생긴다 |
+| D-31 | 유스케이스 흐름과 도메인 작업의 분리 | **application에는 Facade(`XxxFacade`), domain에는 도메인 서비스(`XxxService`).** Facade는 트랜잭션·도메인 서비스 호출 순서·기술(`PasswordEncoder`·`TokenProvider`)·DTO 변환을 맡고, 도메인 서비스는 Repository가 필요한 도메인 단위 작업(조회·404·403·저장, 엔티티에 일 시키기)을 맡는다. 규칙 자체는 계속 엔티티에 둔다 | 주문 생성(메뉴+회원+주문)·결제(주문+결제)처럼 여러 도메인이 엮이는 유스케이스를 Facade가 조율하고, "없는 메뉴 404" 같은 작업을 도메인 서비스 하나로 메뉴·주문이 함께 재사용한다. application = 유스케이스 조율이라는 역할이 코드에 드러난다. 도메인 서비스는 Spring 중 `@Service`(spring-context)만 쓰고 트랜잭션·DTO·Security를 모른다 | 애플리케이션 서비스 하나로 끝내는 간결함. 단순 CRUD에서 Facade가 도메인 서비스를 그대로 부르는 통과용 코드가 생긴다 |
 | D-32 | domain enum의 노출 범위 | **domain enum(`UserRole`, `MenuStatus` 등)은 application 밖으로 내보내지 않는다.** Request·Command·Response의 enum 값은 문자열. 받을 때는 presentation이 `@Pattern`으로 허용값을 검증하고 Facade가 `valueOf()`로 바꾼다. 내보낼 때는 `Response.from()`이 `name()`으로 바꾼다. 변환용 공통 메서드는 두지 않는다 | presentation이 domain을 import하지 않는다. domain enum 이름을 바꾸면 변환 코드에서 드러나 API가 조용히 바뀌지 않는다. 잘못된 값은 `fieldErrors`가 담긴 400으로 응답된다(전에는 JSON 변환 실패로 `fieldErrors`가 빈 400). `name()`·`valueOf()`가 이미 표준 공통 메서드라 래퍼가 주는 이득이 없다 | enum 타입을 DTO에 그대로 쓰는 간결함. `@Pattern` 허용값이 enum과 어긋나면 `valueOf()` 실패로 500이 날 수 있음 — enum 값을 바꿀 때 `@Pattern`도 함께 고친다 |
+| D-33 | Facade가 쓰는 기술의 추상화 (DIP) | **쓰는 쪽(application)이 인터페이스를 정하고 infrastructure가 구현한다.** 토큰 발급은 `user/application/TokenProvider`(`createToken`, `getExpirationSeconds`)로 정하고 `JwtProvider`(infrastructure)가 구현한다. 토큰 검증(`parse`)은 Security 필터만 쓰므로 `JwtProvider`에만 둔다. `PasswordEncoder`는 이미 인터페이스라 그대로 쓴다 | 의존성 역전 원칙(DIP): 핵심 계층이 기술 세부에 기대지 않는다. Repository(D-29)와 같은 모양이라 구조가 일관된다. 토큰 방식을 바꿔도 `UserFacade`는 바뀌지 않고, Facade 테스트는 인터페이스만 Mock한다. 인터페이스를 쓰는 곳이 `UserFacade` 하나라 `global`이 아닌 `user/application`에 둔다 | 구체 클래스를 바로 쓰는 간결함 (인터페이스 1개 추가). `PasswordEncoder`는 Spring Security가 정한 인터페이스라 완전한 DIP는 아니지만 표준 추상화로 보고 허용 |
 
 <br>
 
@@ -315,14 +317,14 @@ classDiagram
 | 패키지 | presentation | application | domain | infrastructure |
 |---|---|---|---|---|
 | `global` | `GlobalExceptionHandler`, `ErrorResponse` | `dto/PageResponse` | `BaseEntity`, `BusinessException`, `ErrorCode` | `SecurityConfig`, `JpaAuditingConfig`, `ClockConfig`, `JwtProvider`, `JwtAuthenticationFilter`, `AuthUser` |
-| `user` | `UserController`, `SignupRequest`, `LoginRequest` | `UserFacade`, `dto/SignupCommand`, `dto/LoginCommand`, `dto/UserResponse`, `dto/LoginResponse` | `User`, `UserRole`, `UserStatus`, `UserService`, `UserRepository` | `UserJpaRepository`, `UserRepositoryImpl` |
+| `user` | `UserController`, `SignupRequest`, `LoginRequest` | `UserFacade`, `TokenProvider`, `dto/SignupCommand`, `dto/LoginCommand`, `dto/UserResponse`, `dto/LoginResponse` | `User`, `UserRole`, `UserStatus`, `UserService`, `UserRepository` | `UserJpaRepository`, `UserRepositoryImpl` |
 | `menu` | `MenuController`, `MenuRequest` | `MenuFacade`, `dto/MenuCommand`, `dto/MenuResponse` | `Menu`, `MenuStatus`, `MenuService`, `MenuRepository` | `MenuJpaRepository`, `MenuRepositoryImpl` |
 | `order` | `OrderController`, `OrderCreateRequest` | `OrderFacade`, `dto/OrderCreateCommand`, `dto/OrderResponse` | `Order`, `OrderStatus`, `OrderService`, `OrderRepository` | `OrderJpaRepository`, `OrderRepositoryImpl` |
 | `payment` | `PaymentController`, `PaymentRequest` | `PaymentFacade`, `dto/PaymentCommand`, `dto/PaymentResponse` | `Payment`, `PaymentMethod`, `PaymentStatus`, `PaymentService`, `PaymentRepository` | `PaymentJpaRepository`, `PaymentRepositoryImpl` |
 
 - 패키지는 도메인 먼저, 그 안을 계층별로 나눕니다(D-28).
 - domain의 `XxxRepository`는 Spring에 의존하지 않는 순수 인터페이스입니다. 단, 페이징 결과 표현인 `Page`(Spring Data Commons)는 허용합니다. `BaseEntity`의 Auditing 리스너와 엔티티의 JPA 매핑 어노테이션도 엔티티 정의의 일부로 보고 domain에 둡니다.
-- `UserFacade`는 `PasswordEncoder`와 `JwtProvider`(infrastructure)를 사용합니다. application → infrastructure 의존은 허용하고, domain → infrastructure 의존만 금지합니다. 그래서 로그인의 비밀번호 대조와 토큰 발급은 도메인 서비스가 아니라 Facade에 있습니다.
+- `UserFacade`는 `PasswordEncoder`와 `TokenProvider`를 사용합니다. 둘 다 **인터페이스**라 Facade는 BCrypt·JWT 구현을 모릅니다. `TokenProvider`는 application이 정하고 infrastructure의 `JwtProvider`가 구현합니다(D-33). domain은 이 둘도 모르므로, 로그인의 비밀번호 대조와 토큰 발급은 도메인 서비스가 아니라 Facade에 있습니다.
 - `PasswordEncoder` 빈은 `SecurityConfig`에서 **`BCryptPasswordEncoder`**로 등록합니다. 기본 위임 인코더는 `{bcrypt}` 접두사를 붙여 발제 5-1 ⑥ 확인을 통과하지 못합니다 (02 D-14).
 - `AuthUser(userId, username, role)`는 토큰 클레임만으로 만듭니다 (D-15).
 - `ClockConfig`는 `Clock` 빈을 등록합니다. 도메인 서비스 `MenuService`가 `menu.delete(LocalDateTime.now(clock))`에 사용합니다(D-12).
