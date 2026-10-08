@@ -5,6 +5,7 @@
 | 버전 | 날짜 | 변경 내용 | 관련 요구사항 |
 |---|---|---|---|
 | v1.0 | 2026-10-07 | 최초 작성 (필수 API 13개, 도전 API 2개, 공통 규칙, 에러 응답) | 01 v1.4, 02 v1.3, 04 v1.3 |
+| v1.3 | 2026-10-08 | 4.4 에러 응답 예시(409)의 메시지를 실제 `ErrorCode.INVALID_ORDER_STATUS` 문구와 맞춤 | 구현 대조 |
 | v1.2 | 2026-10-08 | 회원가입 역할 값 오류(`ADMIN` 등)도 `fieldErrors`에 `role`을 담아 응답 (역할을 문자열로 받아 `@Pattern` 검증, 04 D-32) | 04 v1.7 |
 | v1.1 | 2026-10-07 | 7장 DTO 목록에 위치 표시: 요청 DTO는 presentation, Facade 입력(Command)·응답 DTO는 application (API 모양 변화 없음) | 04 v1.5 D-30, v1.6 D-31 |
 
@@ -114,7 +115,7 @@
 {
   "status": 409,
   "code": "INVALID_ORDER_STATUS",
-  "message": "현재 주문 상태에서는 처리할 수 없습니다.",
+  "message": "현재 주문 상태에서는 할 수 없는 요청입니다.",
   "fieldErrors": []
 }
 ```

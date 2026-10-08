@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 프로젝트 개요
 
-배달 주문 서비스 백엔드 API (온보딩 개인 과제). 요구사항의 원본은 `docs/20261006 과제 발제 자료.md`이며, 기능 구현 시 해당 문서의 **PART 2(요구사항)·5-1(테스트 시나리오)·5-2(코드 점검 체크리스트)** 를 기준으로 판단한다. 요구사항에 없는 부분은 스스로 판단해 채우되, 문서의 상태 코드·권한 규칙과 어긋나지 않게 한다.
+배달 주문 서비스 백엔드 API (온보딩 개인 과제). 요구사항의 원본은 `docs/20261006 과제 발제 자료.md`(로컬 전용, `.gitignore`로 레포에서 제외)이며, 기능 구현 시 해당 문서의 **PART 2(요구사항)·5-1(테스트 시나리오)·5-2(코드 점검 체크리스트)** 를 기준으로 판단한다. 요구사항에 없는 부분은 스스로 판단해 채우되, 문서의 상태 코드·권한 규칙과 어긋나지 않게 한다.
 
 - Java 21 · Spring Boot 4.1.1 · Gradle(Groovy) · PostgreSQL 18 · Spring Data JPA · Spring Security · Validation · Lombok
 - JWT는 JJWT 0.13, 테스트 DB는 Testcontainers 2.x(`org.testcontainers.postgresql.PostgreSQLContainer`)
