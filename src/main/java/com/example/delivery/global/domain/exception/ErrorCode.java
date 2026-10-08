@@ -26,7 +26,14 @@ public enum ErrorCode {
 
     // 메뉴
     MENU_NOT_FOUND(404, "메뉴를 찾을 수 없습니다."),
-    MENU_ACCESS_DENIED(403, "본인 메뉴만 수정·삭제할 수 있습니다.");
+    MENU_ACCESS_DENIED(403, "본인 메뉴만 수정·삭제할 수 있습니다."),
+    MENU_SOLD_OUT(409, "품절된 메뉴는 주문할 수 없습니다."),
+
+    // 주문
+    ORDER_NOT_FOUND(404, "주문을 찾을 수 없습니다."),
+    ORDER_ACCESS_DENIED(403, "본인과 관련된 주문만 처리할 수 있습니다."),
+    INVALID_ORDER_STATUS(409, "현재 주문 상태에서는 할 수 없는 요청입니다."),
+    CONCURRENT_MODIFICATION(409, "다른 요청이 먼저 처리되었습니다. 다시 시도해 주세요.");
 
     private final int status;
     private final String message;
