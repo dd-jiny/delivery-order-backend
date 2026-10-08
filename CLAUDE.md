@@ -30,7 +30,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|---|
 | domain | 순수 JUnit (Spring·DB 없음) | 상태 전이와 409, 총액 계산, 소유 확인 |
 | domain 서비스 | Mockito 단위 테스트. Mock은 Repository만, **엔티티는 진짜 객체** | 404 → 403 → 409 검증 순서, 저장 여부 |
-| application (Facade) | Mockito 단위 테스트. Mock은 도메인 서비스·`PasswordEncoder`·`JwtProvider`. **여러 도메인을 조율하거나 기술을 엮는 Facade만** 작성 | 호출 순서, 기술 처리(암호화·토큰), 응답 DTO |
+| application (Facade) | Mockito 단위 테스트. Mock은 도메인 서비스·`PasswordEncoder`·`TokenProvider`. **여러 도메인을 조율하거나 기술을 엮는 Facade만** 작성 | 호출 순서, 기술 처리(암호화·토큰), 응답 DTO |
 | repository | `@DataJpaTest` + Testcontainers | 직접 이름 지은 Query Method만 |
 | API | E2E: `@SpringBootTest` + MockMvc + Testcontainers | 성공 응답, 401·403(역할)·400, 대표 404·409 |
 
@@ -87,7 +87,7 @@ set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 
 | 계층 | 담는 것 | 하지 않는 것 |
 |---|---|---|
 | `presentation` | Controller, 요청 DTO(`XxxRequest`, `@Valid` 검증, `toCommand()`), 상태 코드 결정 | 비즈니스 판단, Repository 호출, 응답 DTO 정의 |
-| `application` | Facade(`XxxFacade`): `@Transactional`, 도메인 서비스 호출 순서 조율, 기술 처리(`PasswordEncoder`·`JwtProvider`), `dto/`의 입력 `XxxCommand`·출력 `XxxResponse`, 엔티티 → 응답 DTO 변환 | Repository 직접 호출, 상태 전이·금액 계산 같은 규칙 구현, presentation import |
+| `application` | Facade(`XxxFacade`): `@Transactional`, 도메인 서비스 호출 순서 조율, 기술 처리(`PasswordEncoder`·`TokenProvider` — 인터페이스에만 의존, 04 D-33), `dto/`의 입력 `XxxCommand`·출력 `XxxResponse`, 엔티티 → 응답 DTO 변환 | Repository 직접 호출, 상태 전이·금액 계산 같은 규칙 구현, presentation import |
 | `domain` | Entity(비즈니스 메서드 포함), enum, 도메인 서비스(`XxxService`: 조회·404·403·저장, 엔티티에 일 시키기), Repository **순수 인터페이스**(도메인 언어로 이름 지은 메서드), 도메인 예외 | Spring Web·Security·JWT·Spring Data JPA 의존 (`JpaRepository` 상속 금지, 페이징 결과 `Page`만 허용) |
 | `infrastructure` | DB 접근 구현(`XxxJpaRepository extends JpaRepository` + domain 인터페이스를 구현하는 `XxxRepositoryImpl`), JWT 발급·검증, Security 필터·설정, 외부 기술 구현 | 비즈니스 규칙 |
 

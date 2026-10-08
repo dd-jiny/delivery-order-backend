@@ -1,5 +1,6 @@
 package com.example.delivery.global.infrastructure.security;
 
+import com.example.delivery.user.application.TokenProvider;
 import com.example.delivery.user.domain.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -17,9 +18,10 @@ import org.springframework.stereotype.Component;
 /**
  * JWT 발급·검증 (HS256). 클레임은 sub(회원 PK)·username·role·exp만 담는다.
  * 현재 시각은 주입받은 Clock에서 가져와 테스트에서 만료를 고정 시각으로 검증할 수 있게 한다.
+ * 발급은 application이 정한 TokenProvider를 구현하고(04 D-33), 검증(parse)은 Security 필터만 쓰므로 이 클래스에만 둔다.
  */
 @Component
-public class JwtProvider {
+public class JwtProvider implements TokenProvider {
 
     private static final Duration EXPIRATION = Duration.ofHours(1);
     private static final int MIN_SECRET_BYTES = 32;
@@ -38,6 +40,7 @@ public class JwtProvider {
         this.clock = clock;
     }
 
+    @Override
     public String createToken(Long userId, String username, UserRole role) {
         Date expiration = Date.from(clock.instant().plus(EXPIRATION));
         return Jwts.builder()
@@ -69,6 +72,7 @@ public class JwtProvider {
         }
     }
 
+    @Override
     public long getExpirationSeconds() {
         return EXPIRATION.toSeconds();
     }
