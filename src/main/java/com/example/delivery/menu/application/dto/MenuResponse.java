@@ -1,17 +1,19 @@
-package com.example.delivery.menu.presentation;
+package com.example.delivery.menu.application.dto;
 
 import com.example.delivery.menu.domain.Menu;
-import com.example.delivery.menu.domain.MenuStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import java.time.LocalDateTime;
 
+/**
+ * 메뉴 응답. domain enum(MenuStatus)은 밖으로 내보내지 않고 문자열로 바꾼다.
+ */
 public record MenuResponse(
         Long menuId,
         Long ownerId,
         String name,
         Long price,
         String description,
-        MenuStatus status,
+        String status,
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
         LocalDateTime createdAt,
         @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -26,7 +28,7 @@ public record MenuResponse(
                 menu.getName(),
                 menu.getPrice(),
                 menu.getDescription(),
-                menu.getStatus(),
+                menu.getStatus().name(),
                 menu.getCreatedAt(),
                 menu.getUpdatedAt());
     }

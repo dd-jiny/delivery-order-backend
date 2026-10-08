@@ -129,14 +129,13 @@ class UserApiTest extends ApiTestSupport {
         }
 
         @Test
-        @DisplayName("CUSTOMER·OWNER가 아닌 역할이면 400")
+        @DisplayName("CUSTOMER·OWNER가 아닌 역할이면 400과 함께 role 필드 오류를 알려준다")
         void roleInvalid() throws Exception {
             // when
             ResultActions result = signup("owner1", "password123", "ADMIN");
 
             // then
-            result.andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
+            expectInvalidField(result, "role");
         }
     }
 

@@ -1,4 +1,4 @@
-package com.example.delivery.menu.application;
+package com.example.delivery.menu.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,21 +7,12 @@ import static org.mockito.BDDMockito.given;
 
 import com.example.delivery.global.domain.exception.BusinessException;
 import com.example.delivery.global.domain.exception.ErrorCode;
-import com.example.delivery.global.presentation.PageResponse;
-import com.example.delivery.menu.domain.Menu;
-import com.example.delivery.menu.domain.MenuFixture;
-import com.example.delivery.menu.domain.MenuRepository;
-import com.example.delivery.menu.domain.MenuStatus;
-import com.example.delivery.menu.presentation.MenuRequest;
-import com.example.delivery.menu.presentation.MenuResponse;
 import com.example.delivery.user.domain.User;
 import com.example.delivery.user.domain.UserFixture;
-import com.example.delivery.user.domain.UserRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -30,9 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 @ExtendWith(MockitoExtension.class)
 class MenuServiceTest {
@@ -44,9 +32,6 @@ class MenuServiceTest {
     @Mock
     private MenuRepository menuRepository;
 
-    @Mock
-    private UserRepository userRepository;
-
     private MenuService menuService;
 
     private User owner;
@@ -54,59 +39,30 @@ class MenuServiceTest {
     @BeforeEach
     void setUp() {
         Clock fixedClock = Clock.fixed(Instant.parse("2026-10-07T05:30:00Z"), ZoneId.of("Asia/Seoul"));
-        menuService = new MenuService(menuRepository, userRepository, fixedClock);
+        menuService = new MenuService(menuRepository, fixedClock);
         owner = UserFixture.withId(UserFixture.owner(), OWNER_ID);
     }
 
     @Nested
     @DisplayName("메뉴 등록")
-    class Create {
+    class Register {
 
         @Test
-        @DisplayName("토큰의 회원을 주인으로 판매 중인 메뉴를 등록한다")
+        @DisplayName("받은 회원을 주인으로 판매 중인 메뉴를 저장한다")
         void success() {
             // given
-            given(userRepository.getReferenceById(OWNER_ID)).willReturn(owner);
             given(menuRepository.save(any(Menu.class)))
                     .willAnswer(invocation -> MenuFixture.withId(invocation.getArgument(0), MENU_ID));
 
             // when
-            MenuResponse response = menuService.create(OWNER_ID, new MenuRequest("김밥", 3000L, "기본 김밥"));
+            Menu menu = menuService.register(owner, "김밥", 3000L, "기본 김밥");
 
             // then
-            assertThat(response.menuId()).isEqualTo(MENU_ID);
-            assertThat(response.ownerId()).isEqualTo(OWNER_ID);
-            assertThat(response.name()).isEqualTo("김밥");
-            assertThat(response.price()).isEqualTo(3000L);
-            assertThat(response.description()).isEqualTo("기본 김밥");
-            assertThat(response.status()).isEqualTo(MenuStatus.ON_SALE);
-        }
-    }
-
-    @Nested
-    @DisplayName("메뉴 목록 조회")
-    class GetMenus {
-
-        @Test
-        @DisplayName("삭제되지 않은 메뉴를 최신 등록순으로 조회해 페이지 응답으로 돌려준다")
-        void success() {
-            // given
-            PageRequest latestFirst = PageRequest.of(0, 10,
-                    Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-            Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findAllByDeletedAtIsNull(latestFirst))
-                    .willReturn(new PageImpl<>(List.of(menu), latestFirst, 1));
-
-            // when
-            PageResponse<MenuResponse> response = menuService.getMenus(0, 10);
-
-            // then
-            assertThat(response.content()).extracting(MenuResponse::menuId).containsExactly(MENU_ID);
-            assertThat(response.page()).isEqualTo(0);
-            assertThat(response.size()).isEqualTo(10);
-            assertThat(response.totalElements()).isEqualTo(1);
-            assertThat(response.totalPages()).isEqualTo(1);
-            assertThat(response.hasNext()).isFalse();
+            assertThat(menu.getId()).isEqualTo(MENU_ID);
+            assertThat(menu.isOwnedBy(OWNER_ID)).isTrue();
+            assertThat(menu.getName()).isEqualTo("김밥");
+            assertThat(menu.getPrice()).isEqualTo(3000L);
+            assertThat(menu.getStatus()).isEqualTo(MenuStatus.ON_SALE);
         }
     }
 
@@ -119,21 +75,20 @@ class MenuServiceTest {
         void success() {
             // given
             Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.of(menu));
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.of(menu));
 
             // when
-            MenuResponse response = menuService.getMenu(MENU_ID);
+            Menu found = menuService.getMenu(MENU_ID);
 
             // then
-            assertThat(response.menuId()).isEqualTo(MENU_ID);
-            assertThat(response.name()).isEqualTo("김밥");
+            assertThat(found).isSameAs(menu);
         }
 
         @Test
         @DisplayName("없거나 삭제된 메뉴면 404 MENU_NOT_FOUND")
         void notFound() {
             // given
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.empty());
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> menuService.getMenu(MENU_ID))
@@ -147,31 +102,29 @@ class MenuServiceTest {
     @DisplayName("메뉴 수정")
     class Update {
 
-        private final MenuRequest request = new MenuRequest("김밥", 3500L, "가격 인상");
-
         @Test
         @DisplayName("본인 메뉴의 이름·가격·설명을 수정한다")
         void success() {
             // given
             Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.of(menu));
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.of(menu));
 
             // when
-            MenuResponse response = menuService.update(OWNER_ID, MENU_ID, request);
+            Menu updated = menuService.update(OWNER_ID, MENU_ID, "김밥", 3500L, "가격 인상");
 
             // then
-            assertThat(response.price()).isEqualTo(3500L);
-            assertThat(response.description()).isEqualTo("가격 인상");
+            assertThat(updated.getPrice()).isEqualTo(3500L);
+            assertThat(updated.getDescription()).isEqualTo("가격 인상");
         }
 
         @Test
         @DisplayName("없거나 삭제된 메뉴면 404 MENU_NOT_FOUND")
         void notFound() {
             // given
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.empty());
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.empty());
 
             // when & then
-            assertThatThrownBy(() -> menuService.update(OWNER_ID, MENU_ID, request))
+            assertThatThrownBy(() -> menuService.update(OWNER_ID, MENU_ID, "김밥", 3500L, "가격 인상"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.MENU_NOT_FOUND);
@@ -182,10 +135,10 @@ class MenuServiceTest {
         void otherOwner() {
             // given
             Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.of(menu));
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.of(menu));
 
             // when & then
-            assertThatThrownBy(() -> menuService.update(OTHER_OWNER_ID, MENU_ID, request))
+            assertThatThrownBy(() -> menuService.update(OTHER_OWNER_ID, MENU_ID, "김밥", 3500L, "가격 인상"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(ErrorCode.MENU_ACCESS_DENIED);
@@ -202,7 +155,7 @@ class MenuServiceTest {
         void success() {
             // given
             Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.of(menu));
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.of(menu));
 
             // when
             menuService.delete(OWNER_ID, MENU_ID);
@@ -216,7 +169,7 @@ class MenuServiceTest {
         @DisplayName("없거나 이미 삭제된 메뉴면 404 MENU_NOT_FOUND")
         void notFound() {
             // given
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.empty());
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> menuService.delete(OWNER_ID, MENU_ID))
@@ -230,7 +183,7 @@ class MenuServiceTest {
         void otherOwner() {
             // given
             Menu menu = MenuFixture.withId(MenuFixture.kimbap(owner), MENU_ID);
-            given(menuRepository.findByIdAndDeletedAtIsNull(MENU_ID)).willReturn(Optional.of(menu));
+            given(menuRepository.findByIdExcludingDeleted(MENU_ID)).willReturn(Optional.of(menu));
 
             // when & then
             assertThatThrownBy(() -> menuService.delete(OTHER_OWNER_ID, MENU_ID))

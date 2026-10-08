@@ -24,12 +24,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 테스트 전략 요약
 
-기능 하나를 **안에서 바깥으로** 진행한다: ① 도메인 → ② Service → ③ Repository(직접 만든 Query Method가 있을 때만) → ④ E2E
+기능 하나를 **안에서 바깥으로** 진행한다: ① 도메인(엔티티) → ② 도메인 서비스·Facade → ③ Repository(직접 만든 Query Method가 있을 때만) → ④ E2E
 
 | 대상 | 방식 | 검증 범위 |
 |---|---|---|
 | domain | 순수 JUnit (Spring·DB 없음) | 상태 전이와 409, 총액 계산, 소유 확인 |
-| application | Mockito 단위 테스트. Mock은 Repository·`PasswordEncoder`·`JwtProvider`만, **엔티티는 진짜 객체** | 404 → 403 → 409 검증 순서, 저장·호출 흐름 |
+| domain 서비스 | Mockito 단위 테스트. Mock은 Repository만, **엔티티는 진짜 객체** | 404 → 403 → 409 검증 순서, 저장 여부 |
+| application (Facade) | Mockito 단위 테스트. Mock은 도메인 서비스·`PasswordEncoder`·`JwtProvider`. **여러 도메인을 조율하거나 기술을 엮는 Facade만** 작성 | 호출 순서, 기술 처리(암호화·토큰), 응답 DTO |
 | repository | `@DataJpaTest` + Testcontainers | 직접 이름 지은 Query Method만 |
 | API | E2E: `@SpringBootTest` + MockMvc + Testcontainers | 성공 응답, 401·403(역할)·400, 대표 404·409 |
 
@@ -71,8 +72,8 @@ set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 
 ./gradlew bootRun                        # 실행
 ./gradlew build                          # 빌드 + 테스트
 ./gradlew test                           # 전체 테스트
-./gradlew test --tests "com.example.delivery.menu.application.MenuServiceTest"            # 단일 클래스
-./gradlew test --tests "com.example.delivery.menu.application.MenuServiceTest.methodName" # 단일 메서드
+./gradlew test --tests "com.example.delivery.menu.domain.MenuServiceTest"                 # 단일 클래스
+./gradlew test --tests "com.example.delivery.menu.domain.MenuServiceTest.methodName"      # 단일 메서드
 ```
 
 테스트는 Testcontainers로 DB를 띄우므로 Docker Desktop만 켜져 있으면 `.env` 없이 통과한다. 공통 설정은 `src/test/java/.../support`(`TestcontainersConfig`, E2E 부모 `ApiTestSupport`, Repository 부모 `RepositoryTestSupport`, 두 부모가 테스트 전에 호출하는 `DatabaseCleaner`).
@@ -81,27 +82,27 @@ set -a; source .env; set +a              # 셸에 환경 변수 로드 (gradlew 
 
 ### 4계층 구성
 
-패키지는 **도메인별로 먼저, 그 안을 계층별로** 나눈다. `user`·`menu`·`order`·`payment` 각각이 아래 네 패키지를 가지며, 여러 도메인이 공유하는 것(BaseEntity, Security 설정, JWT, 공통 예외)은 `global` 아래에 같은 계층 이름으로 둔다.
+패키지는 **도메인별로 먼저, 그 안을 계층별로** 나눈다(04 D-28). `user`·`menu`·`order`·`payment` 각각이 아래 네 패키지를 가지며, 여러 도메인이 공유하는 것(BaseEntity, Security 설정, JWT, 공통 예외, `PageResponse`)은 `global` 아래에 같은 계층 이름으로 둔다.
 
 | 계층 | 담는 것 | 하지 않는 것 |
 |---|---|---|
-| `presentation` | Controller, 요청·응답 DTO, `@Valid` 검증, 상태 코드 결정 | 비즈니스 판단, Repository 호출 |
-| `application` | Service, `@Transactional`, 유스케이스 흐름(조회 → 도메인 메서드 호출 → 저장), 엔티티 ↔ 응답 DTO 변환 | 상태 전이·금액 계산 같은 규칙 자체를 구현하지 않음 |
-| `domain` | Entity(비즈니스 메서드 포함), enum, Repository 인터페이스(`JpaRepository` 상속), 도메인 예외 | Spring Web·Security·JWT 의존 |
-| `infrastructure` | JWT 발급·검증, Security 필터·설정, 외부 기술 구현(필요 시 QueryDSL 등) | 비즈니스 규칙 |
+| `presentation` | Controller, 요청 DTO(`XxxRequest`, `@Valid` 검증, `toCommand()`), 상태 코드 결정 | 비즈니스 판단, Repository 호출, 응답 DTO 정의 |
+| `application` | Facade(`XxxFacade`): `@Transactional`, 도메인 서비스 호출 순서 조율, 기술 처리(`PasswordEncoder`·`JwtProvider`), `dto/`의 입력 `XxxCommand`·출력 `XxxResponse`, 엔티티 → 응답 DTO 변환 | Repository 직접 호출, 상태 전이·금액 계산 같은 규칙 구현, presentation import |
+| `domain` | Entity(비즈니스 메서드 포함), enum, 도메인 서비스(`XxxService`: 조회·404·403·저장, 엔티티에 일 시키기), Repository **순수 인터페이스**(도메인 언어로 이름 지은 메서드), 도메인 예외 | Spring Web·Security·JWT·Spring Data JPA 의존 (`JpaRepository` 상속 금지, 페이징 결과 `Page`만 허용) |
+| `infrastructure` | DB 접근 구현(`XxxJpaRepository extends JpaRepository` + domain 인터페이스를 구현하는 `XxxRepositoryImpl`), JWT 발급·검증, Security 필터·설정, 외부 기술 구현 | 비즈니스 규칙 |
 
-의존 방향은 presentation → application → domain 한 방향. infrastructure는 domain을 참조할 수 있지만 domain은 infrastructure를 모른다. presentation이 domain Repository를 직접 호출하지 않는다 (과제 체크리스트 "Controller → Service → Repository"는 이 구조에서도 유지됨).
+의존 방향은 presentation → application → domain 한 방향. infrastructure는 domain을 참조(Repository 인터페이스 구현)할 수 있지만 domain은 infrastructure를 모른다(04 D-29). Controller는 Facade만, Facade는 도메인 서비스만, 도메인 서비스는 자기 도메인의 Repository 인터페이스만 주입받는다(04 D-31). Spring Data JPA는 infrastructure 안에만 둔다. application은 presentation을 import하지 않는다 — Controller가 `request.toCommand()`로 넘기고 Facade가 돌려준 Response를 그대로 응답한다(04 D-30). 도메인 서비스는 DTO·트랜잭션·Security를 모른다. presentation이 Repository를 직접 호출하지 않는다 (과제 체크리스트 "Controller → Service → Repository"는 이 구조에서도 유지됨).
 
 ### 도메인 규칙은 엔티티에
 
-비즈니스 규칙은 Service가 아니라 **엔티티 메서드**에 둔다. Service는 얇게 유지한다.
+비즈니스 규칙은 서비스가 아니라 **엔티티 메서드**에 둔다. 도메인 서비스는 조회·존재·소유 확인·저장과 엔티티 호출만, Facade는 순서 조율만 하도록 얇게 유지한다.
 - 상태 전이: `order.pay()` · `order.cancel()` · `order.accept()` · `order.complete()` — 허용되지 않는 전이는 엔티티가 `BusinessException(INVALID_ORDER_STATUS)`(409)로 거절
-- 소유 확인: `menu.isOwnedBy(userId)` · `order.isOrderedBy(userId)` · `order.isMenuOwnedBy(userId)` — 엔티티는 boolean만 제공하고, 403·404 예외는 Service가 던진다
+- 소유 확인: `menu.isOwnedBy(userId)` · `order.isOrderedBy(userId)` · `order.isMenuOwnedBy(userId)` — 엔티티는 boolean만 제공하고, 403·404 예외는 도메인 서비스가 던진다 (여러 Facade가 재사용)
 - 생성은 정적 팩토리: `Order.create(customer, menu, quantity, deliveryAddress)`에서 스냅샷(`menuName`, `unitPrice`) 복사와 총액 계산, `Payment.complete(order, method)`는 금액을 `order.getTotalPrice()`에서 가져온다
-- 결제는 Service가 순서대로 지시: `order.pay()` → `Payment.complete(order, method)` → 저장. Order는 Payment를 모른다
-- 현재 시각이 필요한 메서드는 시각을 인자로 받는다 (`menu.delete(LocalDateTime)`). Service가 주입받은 `Clock`으로 만든다
-- Service 메서드는 `AuthUser`가 아니라 `userId`·`UserRole`을 받는다
-- 트랜잭션은 Service 메서드 단위(`@Transactional`, 조회는 `readOnly = true`). 엔티티 → DTO 변환도 Service 안에서 끝낸다. `spring.jpa.open-in-view: false`
+- 결제는 도메인 서비스 `PaymentService.pay(order, method)`가 순서대로 지시: `order.pay()` → `Payment.complete(order, method)` → 저장. 주문 조회(404→403)는 `PaymentFacade`가 `OrderService`로 받아 넘긴다. Order는 Payment를 모른다
+- 현재 시각이 필요한 메서드는 시각을 인자로 받는다 (`menu.delete(LocalDateTime)`). 도메인 서비스가 주입받은 `Clock`으로 만든다
+- Facade·도메인 서비스 메서드는 `AuthUser`가 아니라 `userId`·`UserRole`을 받는다
+- 트랜잭션은 Facade 메서드 단위(`@Transactional`, 조회는 `readOnly = true`). 도메인 서비스는 트랜잭션을 열지 않는다. 엔티티 → DTO 변환도 Facade 안에서 끝낸다. `spring.jpa.open-in-view: false`
 - `JwtAuthenticationFilter`는 토큰이 없거나 잘못돼도 **거절하지 않고** 인증 정보 없이 다음 필터로 넘긴다. 거절은 `AuthorizationFilter`(Security URL 규칙)가 한다. 흐름은 `docs/design/05-sequence-diagram.md`
 
 JPA 엔티티와 도메인 모델을 분리하지 않는다 (별도 도메인 객체·매퍼 없음). JPA 엔티티가 곧 도메인 모델이다. 상세는 `docs/design/02-domain.md`(ERD·테이블 명세), `docs/design/04-class-diagram.md`.
@@ -144,6 +145,7 @@ JPA 엔티티와 도메인 모델을 분리하지 않는다 (별도 도메인 �
 - 필수 컬럼 `nullable = false`, 로그인 아이디 `unique = true` — 서비스 검사와 별개로 DB 제약도 건다
 - 메뉴 삭제는 Soft Delete. 삭제된 메뉴는 목록에서 제외, 단건 조회·수정·삭제·주문에서는 404. 기존 주문 기록은 유지
 - 요청·응답은 DTO로만. Entity를 그대로 응답하지 않으며 응답에 비밀번호를 담지 않는다
+- domain enum은 application 밖으로 내보내지 않는다(04 D-32). Request·Command·Response의 enum 값은 `String` — 받을 때는 Request의 `@Pattern`으로 검증하고 Facade가 `valueOf()`, 내보낼 때는 `Response.from()`에서 `name()`. enum 값을 바꾸면 `@Pattern`도 함께 고친다
 - 주문 총액(메뉴 가격 × 수량)과 결제 금액은 **서버가 계산** — 요청에서 금액을 받지 않음
 - 메뉴 주인·주문자 등 "누가"는 요청 본문이 아니라 **JWT에서** 꺼낸다
 - 역할별 주문 목록·아이디 중복 확인은 Spring Data JPA Query Methods로 구현

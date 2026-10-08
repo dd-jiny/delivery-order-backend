@@ -1,5 +1,6 @@
 package com.example.delivery.menu.presentation;
 
+import com.example.delivery.menu.application.dto.MenuCommand;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,4 +21,8 @@ public record MenuRequest(
         @Size(max = 500, message = "설명은 500자 이하여야 합니다.")
         String description
 ) {
+
+    public MenuCommand toCommand() {
+        return new MenuCommand(name, price, description);
+    }
 }

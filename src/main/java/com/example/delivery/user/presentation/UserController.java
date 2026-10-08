@@ -1,6 +1,8 @@
 package com.example.delivery.user.presentation;
 
-import com.example.delivery.user.application.UserService;
+import com.example.delivery.user.application.UserFacade;
+import com.example.delivery.user.application.dto.LoginResponse;
+import com.example.delivery.user.application.dto.UserResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -15,16 +17,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+    private final UserFacade userFacade;
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse signup(@Valid @RequestBody SignupRequest request) {
-        return userService.signup(request);
+        return userFacade.signup(request.toCommand());
     }
 
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
-        return userService.login(request);
+        return userFacade.login(request.toCommand());
     }
 }
