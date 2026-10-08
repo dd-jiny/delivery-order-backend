@@ -17,9 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 
-/**
- * 수락·배달완료의 성공 흐름은 결제 API가 필요해 결제 E2E(4단계)에서 검증한다.
- */
 class OrderApiTest extends ApiTestSupport {
 
     private static final String ADDRESS = "서울시 강남구 테헤란로 1";
@@ -355,6 +352,54 @@ class OrderApiTest extends ApiTestSupport {
     class Accept {
 
         @Test
+        @DisplayName("결제된 본인 메뉴의 주문을 수락하면 200과 주문수락 상태를 응답한다 (시나리오 #28)")
+        void success() throws Exception {
+            // given
+            long orderId = createOrderId(cust1, kimbapId, 2);
+            pay(cust1, orderId);
+
+            // when
+            ResultActions result = changeStatus(owner1, orderId, "accept");
+
+            // then
+            result.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.orderId").value(orderId))
+                    .andExpect(jsonPath("$.status").value("ACCEPTED"));
+        }
+
+        @Test
+        @DisplayName("결제된 주문이라도 다른 사장님 메뉴의 주문이면 403 ORDER_ACCESS_DENIED (시나리오 #27)")
+        void paidButOtherOwner() throws Exception {
+            // given
+            long orderId = createOrderId(cust1, kimbapId, 2);
+            pay(cust1, orderId);
+
+            // when
+            ResultActions result = changeStatus(owner2, orderId, "accept");
+
+            // then
+            result.andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("ORDER_ACCESS_DENIED"));
+        }
+
+        @Test
+        @DisplayName("배달완료된 주문을 다시 수락하면 409 INVALID_ORDER_STATUS (시나리오 #29)")
+        void afterCompleted() throws Exception {
+            // given
+            long orderId = createOrderId(cust1, kimbapId, 2);
+            pay(cust1, orderId);
+            changeStatus(owner1, orderId, "accept");
+            changeStatus(owner1, orderId, "complete");
+
+            // when
+            ResultActions result = changeStatus(owner1, orderId, "accept");
+
+            // then
+            result.andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.code").value("INVALID_ORDER_STATUS"));
+        }
+
+        @Test
         @DisplayName("결제 전 주문을 수락하면 409 INVALID_ORDER_STATUS (시나리오 #22)")
         void notPaid() throws Exception {
             // given
@@ -412,6 +457,24 @@ class OrderApiTest extends ApiTestSupport {
     class Complete {
 
         @Test
+        @DisplayName("수락한 주문을 배달완료하면 200과 배달완료 상태를 응답하고, 목록에서도 배달완료로 보인다 (시나리오 #28)")
+        void success() throws Exception {
+            // given
+            long orderId = createOrderId(cust1, kimbapId, 2);
+            pay(cust1, orderId);
+            changeStatus(owner1, orderId, "accept");
+
+            // when
+            ResultActions result = changeStatus(owner1, orderId, "complete");
+
+            // then
+            result.andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("COMPLETED"));
+            getOrders(owner1)
+                    .andExpect(jsonPath("$[0].status").value("COMPLETED"));
+        }
+
+        @Test
         @DisplayName("수락되지 않은 주문을 배달완료하면 409 INVALID_ORDER_STATUS")
         void notAccepted() throws Exception {
             // given
@@ -453,17 +516,6 @@ class OrderApiTest extends ApiTestSupport {
         }
     }
 
-    private long createMenuId(String token, String name, long price) throws Exception {
-        String body = mockMvc.perform(post("/api/menus")
-                        .header(HttpHeaders.AUTHORIZATION, token)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"name": "%s", "price": %d}
-                                """.formatted(name, price)))
-                .andReturn().getResponse().getContentAsString();
-        return readId(body, "$.menuId");
-    }
-
     private void deleteMenu(String token, long menuId) throws Exception {
         mockMvc.perform(delete("/api/menus/{menuId}", menuId)
                 .header(HttpHeaders.AUTHORIZATION, token));
@@ -484,10 +536,6 @@ class OrderApiTest extends ApiTestSupport {
 
     private ResultActions createOrder(String token, long menuId, int quantity) throws Exception {
         return createOrder(token, orderBody(menuId, quantity, ADDRESS));
-    }
-
-    private long createOrderId(String token, long menuId, int quantity) throws Exception {
-        return readId(createOrder(token, menuId, quantity).andReturn().getResponse().getContentAsString(), "$.orderId");
     }
 
     private ResultActions getOrders(String token) throws Exception {

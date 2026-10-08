@@ -7,6 +7,7 @@
 | v1.0 | 2026-10-07 | 최초 작성 (TDD 방식, 테스트 DB, 계층별 테스트 방식, 진행 순서 결정) | 01 요구사항 정의서 전체 |
 | v1.1 | 2026-10-07 | 6장 테스트 작성 규칙 보강 (동작 검증, 리터럴 기대값, 독립성·결정성, 픽스처, TDD 진행 원칙) | CLAUDE.md 테스트 코드 작성 원칙 |
 | v1.2 | 2026-10-07 | 발제 대조 검증 반영: 5-1 ⑥ DB 직접 확인 항목의 자동 검증(4.5), `/error`·CSRF 함정 검증을 E2E 필수 항목으로 추가 | 발제 3-5 ②, 5-1 ⑥ |
+| v1.6 | 2026-10-08 | 동시 결제 검증을 두 가지로: 타이밍에 기대는 동시 요청 E2E(결과 불변식 확인)와, 트랜잭션 두 개를 일부러 겹쳐 낙관적 락 충돌을 항상 재현하는 `OrderOptimisticLockTest` | 4단계 구현 |
 | v1.5 | 2026-10-08 | Facade 테스트의 토큰 Mock 대상을 `TokenProvider` 인터페이스로 (04 D-33) | 04 v1.9 |
 | v1.4 | 2026-10-08 | Service 테스트를 도메인 서비스 테스트(Repository Mock)와 Facade 테스트(도메인 서비스 Mock, 조율·기술 처리가 있는 것만)로 나눔 | 04 v1.6 D-31 |
 | v1.3 | 2026-10-07 | Repository 테스트 위치를 `{도메인}/infrastructure`로 이동, 대상은 `XxxJpaRepository`의 Query Method와 `XxxRepositoryImpl`의 약속(정렬 등) | 04 v1.5 D-29 |
@@ -136,7 +137,8 @@ flowchart LR
 1. `OrderTest`: `ORDERED`에서 `pay()` → `PAID` / `PAID`·`CANCELED`에서 `pay()` → 409
 2. `OrderServiceTest`: `getCustomerOrder` 없는 주문 404 → 남의 주문 403 / `PaymentServiceTest`: 이미 결제 409, 성공 시 결제 저장과 상태 변경 / `PaymentFacadeTest`: 본인 주문 조회 → 결제 순서
 3. (해당 Query Method 없음 → 생략)
-4. `PaymentApiTest`: 성공 201과 금액, OWNER 403, 카드 외 수단 400, 남의 주문 403, 재결제 409
+4. `PaymentApiTest`: 성공 201과 금액, OWNER 403, 카드 외 수단 400, 남의 주문 403, 재결제 409, 동시 결제(스레드 2개 → 201·409 하나씩, 결제 기록 1건)
+5. `OrderOptimisticLockTest`: 동시 결제 E2E는 두 요청이 실제로 겹칠지 타이밍에 달려 있어(나중 요청이 먼저 커밋된 `PAID`를 보면 락이 아니라 상태 검사 409로 끝남), 트랜잭션 두 개를 `REQUIRES_NEW`로 일부러 겹쳐 `@Version` 충돌과 예외 타입(`ObjectOptimisticLockingFailureException`)을 항상 같은 결과로 확인
 
 <br>
 
